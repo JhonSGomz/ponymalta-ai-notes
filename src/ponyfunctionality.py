@@ -1,10 +1,11 @@
-
 from google.cloud import vision
 import io
 import wget
 import time
 import os
 import datetime
+import joblib
+import re
 
 """
 pony_img_get_labels
@@ -37,7 +38,7 @@ def pony_img_get_labels(path):
        return None
 
 """
-pony_img_get_labels
+pony_url_get_labels
 """
 def pony_url_get_labels(uri):
     client = vision.ImageAnnotatorClient()
@@ -52,6 +53,40 @@ def pony_url_get_labels(uri):
         ts = round(label.score*100,2)
         labeldict[tt] = ts
     return labeldict;
+
+
+"""
+pony_url_get_text
+"""
+def pony_url_get_text(uri):
+    client = vision.ImageAnnotatorClient()
+    image = vision.Image()
+    image.source.image_uri = uri
+    response = client.text_detection(image=image)
+    texts = response.text_annotations
+    textdict = {}
+    i = 0
+    time.sleep(2)
+    for text in texts:
+        print('\n"{}"'.format(text.description))
+        tt = text.description
+        vertices = (['({},{})'.format(vertex.x, vertex.y)
+                    for vertex in text.bounding_poly.vertices])
+        vt = str(vertices)
+        if i == 0:
+            textdict["all"] = tt
+        else:    
+            textdict[i] = tt
+        i+=1    
+        #print('bounds: {}'.format(','.join(vertices)))
+
+    if response.error.message:
+        raise Exception(
+            '{}\nFor more info on error messages, check: '
+            'https://cloud.google.com/apis/design/errors'.format(response.error.message))
+
+    joblib.dump(textdict, 'data-normalizar-texto.pkl') # Guardo el modelo.
+    return textdict
 
 """
 pony_norm_labels
@@ -98,13 +133,36 @@ def pony_write_log(type = None, comment = None):
     except:
         return None
 
-def pony_validate_form(pameters = None):
-    print("validate")
+"""
+pony_normalize_text
+Esta funcion limpia el string que se reconoce desde la imagen
+"""
+def pony_normalize_text(string):
+    s_temp = ""
+    regex = '[\\!\\"\\#\\$\\%\\&\\\'\\(\\)\\*\\+\\.\\,\\-\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^_\\`\\{\\|\\}\\~]'
+    s_temp = pony_delete_enter(string) # Delte enters
+    s_temp =  s_temp.lower() # minusculas
+    s_temp = re.sub(regex , ' ', s_temp) # Eliminación de signos de puntuación
+    s_temp = re.sub("\\s+", ' ', s_temp) # Eliminación de espacios en blanco múltiples
+    s_temp = s_temp.strip()
+    return s_temp
+
+"""
+pony_delete_enter
+Esta funcion elimina los 'enter' de un String. Funcion de apoyo
+"""
+def pony_delete_enter(value):
+    return ''.join(value.splitlines())
+
+"""
+pony_normalpony_evaluate_ratingize_text
+Esta funcion evalua el texto dentro del string y la nota/boletin
+"""
+def pony_evaluate_rating(string):
+    rating_leters = ("e","mb","r","a","m")
+
 
 def pony_image_model(labels):
     from src import ponynotasmodel
     predict = ponynotasmodel.pony_img_type(labels)
-    print("funcional:"+predict)
-    print(type(predict))
-    print(".......")
     return(predict)

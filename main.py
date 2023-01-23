@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request
 from functools import wraps
 import os
 from src import ponyfunctionality
+import joblib
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY']= 'fd2b0a636ed0c80c1646cd2c2e72f7a758b42b5b' 
@@ -115,15 +117,14 @@ def ponygetimageia():
     c_text = request.form['rating']
     try: 
         labels_img= ponyfunctionality.pony_url_get_labels(c_img)
-        #labels_imgnorm = ponyfunctionality.pony_norm_labels(labels_img)
-        #labels_img = {'Font': 84.5, 'Handwriting': 79.39, 'Paper': 70.79, 'Paper product': 65.91, 'Writing': 64.54, 'Document': 60.0, 'Ink': 54.85, 'Pattern': 52.2, 'Number': 50.96}
         labels_imgnorm = ponyfunctionality.pony_norm_labels(labels_img)
-        predict = ponyfunctionality.pony_image_model(labels_imgnorm)
-        print("Final:"+predict)
-        return jsonify({"message":"success","labels": str(labels_imgnorm),"img_predict":predict})  
+        img_predict = ponyfunctionality.pony_image_model(labels_imgnorm)
+        text_img = ponyfunctionality.pony_url_get_text(c_crop)
+        text_img_norm = ponyfunctionality.pony_normalize_text(text_img["all"])
+        crop_predict = "0.56"
+        return jsonify({"message":"success","img_labels": str(labels_imgnorm),"img_predict":img_predict,"text_crop":text_img_norm,"crop_predict":crop_predict})   
     except Exception as e:
         return jsonify({"message":"Error:" + str(e)}), 400     
-
 
 """
 MAIN ...........................................................................
@@ -132,3 +133,6 @@ export GOOGLE_APPLICATION_CREDENTIALS=vml-pony-test-8f67d3bc7fc9.json
 if __name__ == '__main__':
     #app.run()
     app.run(debug=True, port=os.getenv("PORT", default=5000)) 
+
+    #https://www.youtube.com/watch?v=CtpSBau84xg
+    #para ver el tema del cache
