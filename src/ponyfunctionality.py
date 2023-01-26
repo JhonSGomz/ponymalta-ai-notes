@@ -6,6 +6,9 @@ import os
 import datetime
 import joblib
 import re
+import json
+import numpy
+import math
 
 """
 pony_img_get_labels
@@ -139,11 +142,12 @@ Esta funcion limpia el string que se reconoce desde la imagen
 """
 def pony_normalize_text(string):
     s_temp = ""
-    regex = '[\\!\\"\\#\\$\\%\\&\\\'\\(\\)\\*\\+\\.\\,\\-\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^_\\`\\{\\|\\}\\~]'
-    s_temp = pony_delete_enter(string) # Delte enters
+    regex = '[\\!\\"\\#\\$\\%\\&\\\'\\(\\)\\*\\+\\-\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^_\\`\\{\\|\\}\\~]'
+    s_temp = pony_delete_enter(string) # Elimina enters
     s_temp =  s_temp.lower() # minusculas
     s_temp = re.sub(regex , ' ', s_temp) # Eliminación de signos de puntuación
     s_temp = re.sub("\\s+", ' ', s_temp) # Eliminación de espacios en blanco múltiples
+    s_temp = s_temp.replace(",", "." )
     s_temp = s_temp.strip()
     return s_temp
 
@@ -155,11 +159,59 @@ def pony_delete_enter(value):
     return ''.join(value.splitlines())
 
 """
-pony_normalpony_evaluate_ratingize_text
+pony_evaluate_rating
 Esta funcion evalua el texto dentro del string y la nota/boletin
 """
-def pony_evaluate_rating(string):
+def pony_evaluate_rating(string_img,list_rating):
     rating_leters = ("e","mb","r","a","m")
+    rating = json.loads(list_rating)
+    if len(rating) == 0:
+        #error
+        return None
+    elif len(rating) > 0:
+        #Calculo conincidencias exactas
+        e_rating_veces = []
+        for key in rating:
+            rt = pony_normalize_text(str(rating[key]))
+            cc = string_img.count(rt)
+            e_rating_veces.append(cc) 
+        #Calculo conincidencias ajustadas
+        a_rating_veces = []
+        for key in rating:
+            rt = pony_normalize_text(str(rating[key]))
+            rt = rt.replace(".", "" )
+            cc = string_img.count(rt)
+            a_rating_veces.append(cc)
+    #Analisis de conincidencias para promedios
+    match_means = []
+    for match in e_rating_veces:#exactos
+        if match == 0:
+            match_means.append(0)
+        elif match == 1:
+            match_means.append(100)
+        elif match > 1:
+            p_predict = 100 - (math.pow(match, 2))
+            match_means.append(p_predict)  
+    i = 0        
+    for prom in match_means:#evalua con los no exactos
+        if prom == 0:
+            if a_rating_veces[i] == 0 :
+                match_means[i] = 0
+            elif a_rating_veces[i] == 1:
+                match_means[i] = 70
+            elif a_rating_veces[i] > 1:
+                p_predict = 70 - (math.pow(a_rating_veces[i], 2))
+                match_means[i] = p_predict              
+        i+=1 
+    #promedio coinidencias
+    e_rating_precit = numpy.mean(match_means)
+    #print("Crop predict:")
+    #print(e_rating_precit)
+    #print("....................")
+    #print(e_rating_veces)
+    #print(a_rating_veces)
+    #print(match_means)
+    return e_rating_precit  
 
 
 def pony_image_model(labels):

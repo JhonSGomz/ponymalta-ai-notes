@@ -116,13 +116,15 @@ def ponygetimageia():
     c_ratetype = request.form['rate_type']
     c_text = request.form['rating']
     try: 
-        labels_img= ponyfunctionality.pony_url_get_labels(c_img)
+        labels_img = ponyfunctionality.pony_url_get_labels(c_img)
         labels_imgnorm = ponyfunctionality.pony_norm_labels(labels_img)
         img_predict = ponyfunctionality.pony_image_model(labels_imgnorm)
         text_img = ponyfunctionality.pony_url_get_text(c_crop)
+
+        #text_img_norm = ponyfunctionality.pony_normalize_text("ara marcap\nte50xto EJ= [ET Pun\nFor separ\ndel m\n750\n104/-abril-2022")
         text_img_norm = ponyfunctionality.pony_normalize_text(text_img["all"])
-        crop_predict = "0.56"
-        return jsonify({"message":"success","img_labels": str(labels_imgnorm),"img_predict":img_predict,"text_crop":text_img_norm,"crop_predict":crop_predict})   
+        crop_predict = ponyfunctionality.pony_evaluate_rating(text_img_norm,c_text)
+        return jsonify({"message":"success","img_labels": str(labels_imgnorm),"img_predict":img_predict,"text_crop":text_img["all"],"crop_predict":crop_predict})   
     except Exception as e:
         return jsonify({"message":"Error:" + str(e)}), 400     
 
